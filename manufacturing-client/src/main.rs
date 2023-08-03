@@ -218,9 +218,11 @@ async fn perform_di(
     mfg_string_type: MfgStringType,
     iface: Option<String>,
 ) -> Result<()> {
+    log::info!("at perform_di");
     let mfg_info = get_mfg_info(mfg_string_type, iface)
         .await
         .context("Error building MFG string")?;
+    log::info!("mfg_info: {mfg_info:?}");
     let set_credentials: RequestResult<messages::v11::di::SetCredentials> = client
         .send_request(messages::v11::di::AppStart::new(mfg_info)?, None)
         .await;
@@ -236,6 +238,7 @@ async fn perform_di(
         .manufacturer_public_key_hash(HashType::Sha384)
         .context("Error getting manufacturer public key hash")?;
 
+    log::info!("trying to save credentials");
     key_reference
         .save_to_credential(
             ov_header.device_info().to_string(),
@@ -244,12 +247,13 @@ async fn perform_di(
             manufacturer_public_key_hash,
         )
         .context("Error saving key reference to credential")?;
+    log::info!("credentials saved, sending done");
 
     let done: RequestResult<messages::v11::di::Done> = client
         .send_request(messages::v11::di::SetHMAC::new(ov_header_hmac), None)
         .await;
     done.context("Error sending SetHmac")?;
-
+    log::info!("di done");
     Ok(())
 }
 
@@ -319,7 +323,7 @@ async fn main() -> Result<()> {
 
     let args: MainArguments = clap::Parser::parse();
     if let Some(command) = args.command {
-        log::debug!("Handling commands");
+        log::info!("Handling commands");
         match command {
             Commands::PlainDI(args) => {
                 url = args.manufacturing_server_url;
@@ -396,7 +400,7 @@ async fn main() -> Result<()> {
             }
         }
     } else {
-        log::debug!("Reading env variables by default");
+        log::info!("Reading env variables by default");
 
         url = env::var("MANUFACTURING_SERVER_URL")
             .context("Please provide MANUFACTURING_SERVER_URL")?;
@@ -413,6 +417,7 @@ async fn main() -> Result<()> {
             DiunPublicKeyVerificationMode::get_from_env()
                 .context("Error determining how to verify DIUN public key")?
         };
+        log::info!("diun_pub_key_verification: {diun_pub_key_verification:?}");
         if use_plain_di {
             let env_mfg_string_type =
                 env::var("DI_MFG_STRING_TYPE").unwrap_or_else(|_| String::from("serialnumber"));
@@ -440,6 +445,7 @@ async fn main() -> Result<()> {
                 .await
                 .context("Error determining key for DI")?;
         } else {
+            log::info!("!use_plain_di");
             // For !use_plain_di we also need to get the iface if given it to us
             // since the mfg_string_type will be determined in the manufacturing server
             // and it might request MACAddress as the mfg_string_type. What it cannot do
@@ -452,7 +458,9 @@ async fn main() -> Result<()> {
             (keyref, mfg_string_type) = perform_diun(&mut client, diun_pub_key_verification)
                 .await
                 .context("Error performing DIUN")?;
+            log::info!("diun done: {keyref:?}, {mfg_string_type:?}");
             if mfg_string_type == MfgStringType::MACAddress && iface.is_none() {
+                log::info!("getting network iface");
                 match get_default_network_iface() {
                     Ok(Some(result)) => {
                         iface = Some(result);
@@ -469,7 +477,7 @@ async fn main() -> Result<()> {
         }
     }
 
-    log::debug!(
+    log::info!(
         "Performing Device Initialization, with key reference {:?} and MFG String Type {:?}",
         &keyref,
         &mfg_string_type
@@ -487,7 +495,7 @@ async fn get_mfg_info(
     if let Some(mfg_info) = env::var_os("MANUFACTURING_INFO") {
         return Ok(CborSimpleType::Text(mfg_info.into_string().unwrap()));
     }
-    log::debug!("mfg_string_type '{mfg_string_type:?}' requested");
+    log::info!("mfg_string_type '{mfg_string_type:?}' requested");
     let mfg_iden = match mfg_string_type {
         MfgStringType::SerialNumber => {
             fs::read_to_string("/sys/devices/virtual/dmi/id/product_serial")
@@ -846,8 +854,10 @@ impl KeyReference {
         rvinfo: RendezvousInfo,
         manufacturer_public_key_hash: Hash,
     ) -> Result<()> {
+        log::info!("on save_to_credential");
         match self {
             KeyReference::FileSystem { sign_key, hmac_key } => {
+                log::info!("filesystem");
                 let private_key = sign_key
                     .private_key_to_der()
                     .context("Error serializing private sign key")?;
@@ -866,6 +876,7 @@ impl KeyReference {
                     },
                 };
 
+                log::info!("serializing credential");
                 let cred = cred
                     .serialize_data()
                     .context("Error serializing device credential")?;
@@ -875,6 +886,7 @@ impl KeyReference {
                     None => DEVICE_CREDENTIAL_FILESYSTEM_PATH.to_string(),
                 };
 
+                log::info!("writing credentials (filesystem) done");
                 fs::write(filename, cred).context("Error writing device credential")
             }
             KeyReference::SemiTpm {
@@ -884,6 +896,7 @@ impl KeyReference {
                 hmac_private,
                 ..
             } => {
+                log::info!("semitpm");
                 let cred = FileDeviceCredential {
                     active: true,
                     protver: ProtocolVersion::Version1_1,
@@ -909,6 +922,7 @@ impl KeyReference {
                     None => DEVICE_CREDENTIAL_FILESYSTEM_PATH.to_string(),
                 };
 
+                log::info!("writing credentials (semitpm) done");
                 fs::write(filename, cred).context("Error writing device credential")
             }
         }
