@@ -1,13 +1,20 @@
 #!/bin/bash
 
-set -e
+set -eou pipefail
 
+echo "running fdo-manufacturing-client"
 /usr/bin/fdo-manufacturing-client
+echo "running -p /bootmount"
 mkdir -p /bootmount
+echo "running udevadm settle"
 udevadm settle
+echo "running blkid"
 TYPE=$(blkid -p /dev/disk/by-label/boot -s TYPE -o value)
+echo "running mount"
 mount -t ${TYPE} /dev/disk/by-label/boot /bootmount
+echo "running cp"
 cp -a /etc/device-credentials /bootmount/device-credentials
 cat >"/bootmount/fdo-client-env" <<EOF
 DEVICE_CREDENTIAL="/boot/device-credentials"
 EOF
+echo "finishing"
