@@ -6,6 +6,10 @@ After=network-online.target
 Type=oneshot
 EnvironmentFile=-/boot/fdo-client-env
 Environment=LOG_LEVEL=info
+Environment=MANUFACTURING_SERVER_URL=http://192.168.122.180:8080
+ExecStart=/usr/bin/rm /etc/device-credentials
+ExecStart=/usr/libexec/fdo/fdo-manufacturing-client
+ExecStart=/usr/bin/cp -a /etc/device-credentials /boot/device-credentials
 ExecStart=/usr/libexec/fdo/fdo-client-linuxapp
 ExecStartPost=-/usr/bin/mv /boot/device-credentials /etc/device-credentials
 
