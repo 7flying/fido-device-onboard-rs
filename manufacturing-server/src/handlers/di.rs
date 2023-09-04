@@ -76,10 +76,13 @@ pub(crate) async fn app_start(
         Some(key) => Some(key),
         None => match &user_data.public_key_store {
             None => None,
-            Some(store) => store
+            Some(store) => {
+                println!("mfg string: {:?}", &mfg_info.to_string());
+                store
                 .load_data(&mfg_info.to_string())
                 .await
-                .map_err(Error::from_error::<messages::v11::di::AppStart, _>)?,
+                .map_err(Error::from_error::<messages::v11::di::AppStart, _>)?   
+            }
         },
     };
     let public_key = match public_key {

@@ -445,9 +445,14 @@ async fn get_mfg_info(
     log::debug!("mfg_string_type '{mfg_string_type:?}' requested");
     let mfg_iden = match mfg_string_type {
         MfgStringType::SerialNumber => {
-            fs::read_to_string("/sys/devices/virtual/dmi/id/product_serial")
+            let mut some_string = fs::read_to_string("/sys/devices/virtual/dmi/id/product_serial")
                 .or_else(|_| fs::read_to_string("/sys/devices/virtual/dmi/id/chassis_serial"))
-                .context("Error determining system serial number")?
+                .context("Error determining system serial number")?;
+            if some_string.is_empty() || some_string.len() < 8 {
+                some_string = "test_serial".to_string();
+                println!("SerialNumber is empty, returning test string");
+            }
+            some_string
         }
         MfgStringType::MACAddress => {
             let given_iface = iface.context("No iface provided")?;
