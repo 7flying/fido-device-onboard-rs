@@ -6,6 +6,7 @@ members = [
     "store",
     "util",
     "db",
+    "db_test",
 
     "client-linuxapp",
     "owner-onboarding-server",
@@ -26,6 +27,7 @@ default-members = [
     "store",
     "util",
     "db",
+    "db_test",
 
     "client-linuxapp",
     "owner-onboarding-server",
