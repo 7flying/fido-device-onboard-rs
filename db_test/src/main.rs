@@ -11,10 +11,11 @@ use diesel::sqlite::SqliteConnection;
 use dotenvy::dotenv;
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 use fdo_data_formats::Serializable;
-use schema::ownership_voucher::dsl::ownership_voucher;
+//use schema::ownership_voucher::dsl::ownership_voucher;
 use xattr::FileExt;
 
 use crate::models::{NewOwnershipVoucherModel, OwnershipVoucherModel};
+use crate::schema::ownership_voucher;
 
 fn connect_to_db() -> SqliteConnection {
     dotenv().ok();
@@ -183,10 +184,10 @@ fn main() {
     println!("\n");
 
     let connection = &mut connect_to_db();
-    // let results = ownership_voucher
-    //     .select(OwnershipVoucherModel::as_select())
-    //     .load(connection)
-    //     .expect("error loading ovs");
+    // let results = schema::ownership_voucher::dsl::ownership_voucher
+    //      .select(OwnershipVoucherModel::as_select())
+    //      .load(connection)
+    //      .expect("error loading ovs");
 
     // println!(
     //     "Reading OVs (model) from the DB... we've got {} ovs",
@@ -198,21 +199,28 @@ fn main() {
     //     let ov_original = OV::from_pem_or_raw(&ov.contents);
     //     println!("{:?}\n", ov_original.unwrap());
     // }
-    println!("Storing OVs in the database");
-    let _stuff = ovs_to_db(
-        &"/home/idiez/code/repos/fedora-iot/tests/fido-device-onboard-rs/test-ovs".to_string(),
-    );
+    // println!("Storing OVs in the database");
+    // let _stuff = ovs_to_db(
+    //     &"/home/idiez/code/repos/fedora-iot/tests/fido-device-onboard-rs/test-ovs".to_string(),
+    // );
 
     println!("Reading OVs from the database");
-    let results = ownership_voucher
+    let results = schema::ownership_voucher::dsl::ownership_voucher
         .select(OwnershipVoucherModel::as_select())
         .load(connection)
         .expect("error loading ovs");
 
-    println!("we've got {} ovs", results.len());
+    println!("\twe've got {} ovs", results.len());
     for ov in results {
-        println!("{ov}");
+        println!("\t· {ov}");
     }
+
+    // update the metadata of an OV.
+    let test_guid = "7815e9ab-65c6-c8ee-a761-0691ec26a6a3";
+    let result = diesel::update(schema::ownership_voucher::dsl::ownership_voucher)
+        .filter(ownership_voucher::guid.eq(test_guid))
+        .set(ownership_voucher::to2_performed.eq(true))
+        .execute(connection);
 
     println!("All good");
 }
