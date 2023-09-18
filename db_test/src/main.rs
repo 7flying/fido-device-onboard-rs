@@ -205,7 +205,7 @@ fn main() {
     // );
 
     println!("Reading OVs from the database");
-    let results = schema::ownership_voucher::dsl::ownership_voucher
+    let results = ownership_voucher::dsl::ownership_voucher
         .select(OwnershipVoucherModel::as_select())
         .load(connection)
         .expect("error loading ovs");
@@ -217,9 +217,9 @@ fn main() {
 
     // update the metadata of an OV.
     let test_guid = "7815e9ab-65c6-c8ee-a761-0691ec26a6a3";
-    let result = diesel::update(schema::ownership_voucher::dsl::ownership_voucher)
-        .filter(ownership_voucher::guid.eq(test_guid))
-        .set(ownership_voucher::to2_performed.eq(true))
+    let result = diesel::update(ownership_voucher::dsl::ownership_voucher)
+        .filter(schema::ownership_voucher::guid.eq(test_guid))
+        .set(schema::ownership_voucher::to2_performed.eq(true))
         .execute(connection);
 
     println!("All good");

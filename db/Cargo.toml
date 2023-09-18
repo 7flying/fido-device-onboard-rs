@@ -15,3 +15,7 @@ xattr = { version = "1.0", default-features = false, optional = false }  # We *n
 
 fdo-data-formats = { path = "../data-formats", version = "0.4.12" }
 fdo-util = { path = "../util", version = "0.4.12" }
+
+[features]
+postgres = []
+sqlite = []

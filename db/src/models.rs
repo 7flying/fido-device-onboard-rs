@@ -3,9 +3,10 @@ use std::fmt;
 
 // Queriable will generate the code to load this type of struct from an sql query
 // Selectable will generate the code to construct a select based on the model type and on the table that we have referenced with the table_name stuff
-#[derive(Queryable, Selectable)]
+#[derive(Queryable, Selectable, Identifiable)]
 #[diesel(table_name = crate::schema::ownership_voucher)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+//#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+#[diesel(primary_key(guid))]
 pub struct OwnershipVoucherModel {
     pub guid: String,
     pub contents: Vec<u8>,
