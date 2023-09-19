@@ -2,8 +2,11 @@ pub mod models;
 pub mod schema;
 
 use anyhow::{bail, Result};
+use diesel::connection::AnsiTransactionManager;
+use diesel::pg::Pg;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
+use diesel::sqlite::Sqlite;
 use diesel::SqliteConnection;
 use fdo_data_formats::Serializable;
 use schema::ownership_voucher;
@@ -24,20 +27,21 @@ pub enum OVMetadataKey {
     Ttl,
 }
 
-pub trait DBStore {
-    //fn connect_to_db() -> dyn Connection;
+pub trait DBStore<B> {
+    fn connect_to_db() -> Box<dyn Connection<Backend = B, TransactionManager = AnsiTransactionManager>>;
 
-    ///
-    //  fn insert_ov_metadata(key: &OwnershipVoucherStoreMetadataKey, guid: &Guid);
-
-    ///
     fn insert_ov(ov: &OV) -> Result<()>;
 
-    /// Given a GUID find an OV with that key
-    fn get_ov(ov_guid: &String) -> Result<OwnershipVoucherModel>;
+    fn get_ov_model(guid: &Guid) -> Result<OwnershipVoucherModel>;
+
+    fn get_ov(guid: &Guid) -> Result<OV>;
+
+    fn update_ov_metadata_i64(guid: &Guid, key: OVMetadataKey, value: &i64) -> Result<()>;
+
+    fn update_ov_metadata_bool(guid: &Guid, key: OVMetadataKey, value: &bool) -> Result<()>;
 }
 
-pub trait PostgresStorable: DBStore {
+pub trait PostgresStorable: DBStore<Pg> {
     fn connect_to_db() -> PgConnection {
         dotenv().ok();
 
@@ -73,7 +77,7 @@ pub trait PostgresStorable: DBStore {
     // }
 }
 
-pub trait SqliteStorable: DBStore {
+pub trait SqliteStorable: DBStore<Sqlite> {
     fn connect_to_db() -> SqliteConnection {
         dotenv().ok();
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
