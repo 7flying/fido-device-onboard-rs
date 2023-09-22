@@ -21,11 +21,14 @@ pub enum OVMetadataKey {
 }
 
 pub trait DBStore<T>
- where
-     T: diesel::r2d2::R2D2Connection + 'static,
+where
+    T: diesel::r2d2::R2D2Connection + 'static,
 {
-
+    /// Gets a connection pool
     fn get_conn_pool() -> Pool<ConnectionManager<T>>;
+
+    /// Gets a connection to the db
+    fn get_connection() -> T;
 
     /// Stores an OwnershipVoucher
     fn insert_ov(ov: &OV, conn: &mut T) -> Result<()>;

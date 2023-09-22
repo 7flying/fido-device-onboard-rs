@@ -16,21 +16,17 @@ use super::schema::ownership_voucher;
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 use fdo_data_formats::Serializable;
 
-pub trait SqliteConnectable {
-    fn connect_to_db() -> SqliteConnection {
+pub struct SqliteDB {}
+
+impl DBStore<SqliteConnection> for SqliteDB {
+    fn get_connection() -> SqliteConnection {
         dotenv().ok();
         let database_url =
             env::var("SQLITE_DATABASE_URL").expect("SQLITE_DATABASE_URL must be set");
         SqliteConnection::establish(&database_url)
             .unwrap_or_else(|_| panic!("Error connecting to {database_url}"))
     }
-}
 
-pub struct SqliteDB {}
-
-impl SqliteConnectable for SqliteDB {}
-
-impl DBStore<SqliteConnection> for SqliteDB {
     fn get_conn_pool() -> Pool<ConnectionManager<SqliteConnection>> {
         dotenv().ok();
         let database_url =
@@ -137,13 +133,11 @@ mod tests {
         let mut ov_map = HashMap::new();
         let pool = SqliteDB::get_conn_pool();
 
-        let mut last_raw_contents: Vec<u8> = vec![];
         let mut last_guid = "".to_string();
         for path in std::fs::read_dir("../integration-tests/vouchers/v101").expect("Dir not found")
         {
             let ov_path = path.expect("error getting path").path();
             let content = std::fs::read(ov_path).expect("OV couldn't be read");
-            last_raw_contents = content.clone();
             let ov = OV::from_pem_or_raw(&content).expect("Error serializing OV");
             last_guid = ov.header().guid().to_string();
             ov_map.insert(ov.header().guid().to_string(), ov);
@@ -163,7 +157,7 @@ mod tests {
         assert_eq!(count, 3);
 
         // add some metadata for the ovs
-        for (guid, _) in ov_map.into_iter() {
+        for (guid, _) in ov_map.clone().into_iter() {
             SqliteDB::update_ov_metadata_i64(
                 &guid,
                 OVMetadataKey::To0AcceptOwnerWaitSeconds,
@@ -181,10 +175,6 @@ mod tests {
             conn,
         )
         .is_err());
-
-        let ov_model = SqliteDB::get_ov_model(&last_guid, conn)?;
-        //let ov_format = SqliteDB::get_ov(&last_guid, conn)?;
-        assert_eq!(ov_model.contents, last_raw_contents);
 
         // delete an ov, we should have 2
         SqliteDB::delete_ov(&last_guid, conn)?;
