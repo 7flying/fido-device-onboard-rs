@@ -18,7 +18,7 @@ fn main() -> Result<()>{
     let pool = PostgresDB::get_conn_pool();
 
     let mut last_guid = "".to_string();
-    for path in std::fs::read_dir("../../integration-tests/vouchers/v101").expect("Dir not found") {
+    for path in std::fs::read_dir("./integration-tests/vouchers/v101").expect("Dir not found") {
         let ov_path = path.expect("error getting path").path();
         let content = std::fs::read(ov_path).expect("OV couldn't be read");
         let ov = OV::from_pem_or_raw(&content).expect("Error serializing OV");
