@@ -1,4 +1,6 @@
-use super::{DBStore, OVMetadataKey};
+use crate::schema::rendezvous_vouchers;
+
+use super::DBStore;
 
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
@@ -7,10 +9,10 @@ use diesel::SqliteConnection;
 
 use std::env;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use dotenvy::dotenv;
 
-use super::models::{NewOwnershipVoucherModel, OwnershipVoucherModel};
+use super::models::{NewOwnerOV, NewOwnershipVoucherModel, NewRendezvousOV, OwnershipVoucherModel};
 use super::schema::ownership_voucher;
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
@@ -35,28 +37,25 @@ impl DBStore<SqliteConnection> for SqliteDB {
         Pool::builder()
             .test_on_check_out(true)
             .build(manager)
-            .expect("Coulnd't build db connection pool")
+            .expect("Couldn't build db connection pool")
     }
 
     fn insert_ov(ov: &OV, conn: &mut SqliteConnection) -> Result<()> {
         let new_ov_model = NewOwnershipVoucherModel {
             guid: ov.header().guid().to_string(),
             contents: ov.serialize_data().expect("Error serializing OV"),
-            to2_performed: None,
-            to0_accept_owner_wait_seconds: None,
-            ttl: None,
         };
         diesel::insert_into(super::schema::ownership_voucher::table)
             .values(&new_ov_model)
             .execute(conn)
-            .expect("Error saving OV");
+            .expect(&format!("Error saving OV {:?}", new_ov_model.guid));
         Ok(())
     }
 
     fn get_ov_model(guid: &String, conn: &mut SqliteConnection) -> Result<OwnershipVoucherModel> {
         let result = ownership_voucher::dsl::ownership_voucher
             .select(OwnershipVoucherModel::as_select())
-            .filter(super::schema::ownership_voucher::guid.eq(guid.to_string()))
+            .filter(super::schema::ownership_voucher::guid.eq(guid))
             .first(conn)?;
         Ok(result)
     }
@@ -64,7 +63,7 @@ impl DBStore<SqliteConnection> for SqliteDB {
     fn get_ov(guid: &String, conn: &mut SqliteConnection) -> Result<OV> {
         let result = ownership_voucher::dsl::ownership_voucher
             .select(OwnershipVoucherModel::as_select())
-            .filter(super::schema::ownership_voucher::guid.eq(guid.to_string()))
+            .filter(super::schema::ownership_voucher::guid.eq(guid))
             .first(conn)?;
         let ov = OV::from_pem_or_raw(&result.contents)?;
         Ok(ov)
@@ -72,47 +71,84 @@ impl DBStore<SqliteConnection> for SqliteDB {
 
     fn delete_ov(guid: &String, conn: &mut SqliteConnection) -> Result<()> {
         diesel::delete(ownership_voucher::dsl::ownership_voucher)
-            .filter(super::schema::ownership_voucher::guid.eq(guid.to_string()))
+            .filter(super::schema::ownership_voucher::guid.eq(guid))
             .execute(conn)?;
         Ok(())
     }
 
-    fn update_ov_metadata_i64(
+    fn insert_ov_ref_rv(
         guid: &String,
-        key: OVMetadataKey,
-        value: &i64,
+        ttl: Option<i64>,
         conn: &mut SqliteConnection,
     ) -> Result<()> {
-        match key {
-            OVMetadataKey::To0AcceptOwnerWaitSeconds => {
-                diesel::update(ownership_voucher::dsl::ownership_voucher)
-                    .filter(super::schema::ownership_voucher::guid.eq(guid.to_string()))
-                    .set(super::schema::ownership_voucher::to0_accept_owner_wait_seconds.eq(value))
-                    .execute(conn)?;
-            }
-            OVMetadataKey::Ttl => {
-                diesel::update(ownership_voucher::dsl::ownership_voucher)
-                    .filter(super::schema::ownership_voucher::guid.eq(guid.to_string()))
-                    .set(super::schema::ownership_voucher::ttl.eq(value))
-                    .execute(conn)?;
-            }
-            _ => bail!("No such metadata key '{key:?}' with i64 type"),
+        let new_rv_ov = NewRendezvousOV {
+            ov_guid: guid.to_owned(),
+            ttl,
         };
+        diesel::insert_into(super::schema::rendezvous_vouchers::table)
+            .values(&new_rv_ov)
+            .execute(conn)?;
         Ok(())
     }
 
-    fn update_ov_metadata_bool(
+    fn update_ov_ttl_metadata_rv(
         guid: &String,
-        key: OVMetadataKey,
+        value: &i64,
+        conn: &mut SqliteConnection,
+    ) -> Result<()> {
+        diesel::update(super::schema::rendezvous_vouchers::dsl::rendezvous_vouchers)
+            .filter(super::schema::rendezvous_vouchers::ov_guid.eq(guid))
+            .set(super::schema::rendezvous_vouchers::ttl.eq(value))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn insert_ov_ref_owner(
+        guid: &String,
+        to2: Option<bool>,
+        to0: Option<i64>,
+        conn: &mut SqliteConnection,
+    ) -> Result<()> {
+        let new_owner_ov = NewOwnerOV {
+            ov_guid: guid.to_owned(),
+            to0_accept_owner_wait_seconds: to0,
+            to2_performed: to2,
+        };
+        diesel::insert_into(super::schema::owner_vouchers::table)
+            .values(&new_owner_ov)
+            .execute(conn)?;
+        Ok(())
+    }
+
+    #[allow(non_snake_case)]
+    fn update_ov_tO0_metadata_owner(
+        guid: &String,
+        value: &i64,
+        conn: &mut SqliteConnection,
+    ) -> Result<()> {
+        diesel::update(super::schema::owner_vouchers::dsl::owner_vouchers)
+            .filter(super::schema::owner_vouchers::ov_guid.eq(guid))
+            .set(super::schema::owner_vouchers::to0_accept_owner_wait_seconds.eq(value))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    #[allow(non_snake_case)]
+    fn update_ov_tO2_metadata_owner(
+        guid: &String,
         value: &bool,
         conn: &mut SqliteConnection,
     ) -> Result<()> {
-        if key != OVMetadataKey::To2Performed {
-            bail!("No such metadata key '{key:?}' with bool type");
-        }
-        diesel::update(ownership_voucher::dsl::ownership_voucher)
-            .filter(super::schema::ownership_voucher::guid.eq(guid.to_string()))
-            .set(super::schema::ownership_voucher::to2_performed.eq(value))
+        diesel::update(super::schema::owner_vouchers::dsl::owner_vouchers)
+            .filter(super::schema::owner_vouchers::ov_guid.eq(guid))
+            .set(super::schema::owner_vouchers::to2_performed.eq(value))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn delete_ov_rv(guid: &String, conn: &mut SqliteConnection) -> Result<()> {
+        diesel::delete(rendezvous_vouchers::dsl::rendezvous_vouchers)
+            .filter(super::schema::rendezvous_vouchers::ov_guid.eq(guid))
             .execute(conn)?;
         Ok(())
     }
@@ -120,10 +156,14 @@ impl DBStore<SqliteConnection> for SqliteDB {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use super::*;
+    use super::SqliteDB;
+    use crate::{schema::*, DBStore};
     use anyhow::Result;
+    use diesel::connection::SimpleConnection;
+    use diesel::prelude::*;
+    use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
+    use std::collections::HashMap;
+    use std::env;
 
     #[test]
     fn test_database() -> Result<()> {
@@ -133,7 +173,7 @@ mod tests {
         let mut ov_map = HashMap::new();
         let pool = SqliteDB::get_conn_pool();
 
-        let mut last_guid = "".to_string();
+        let mut last_guid = String::new();
         for path in std::fs::read_dir("../integration-tests/vouchers/v101").expect("Dir not found")
         {
             let ov_path = path.expect("error getting path").path();
@@ -145,12 +185,30 @@ mod tests {
 
         // get a connection from the pool
         let conn = &mut pool.get().unwrap();
-        // store ovs in the database
-        for (_, ov) in ov_map.clone().into_iter() {
+        // sqlite does not enable this by default...
+        conn.batch_execute("PRAGMA foreign_keys = ON")?;
+
+        // store ovs in the database and add them to the owner and rendezvous
+        for (guid, ov) in ov_map.clone().into_iter() {
             SqliteDB::insert_ov(&ov, conn)?;
+            SqliteDB::insert_ov_ref_owner(&guid, None, None, conn)?;
+            SqliteDB::insert_ov_ref_rv(&guid, None, conn)?;
         }
-        // we should have 3 ovs
+
+        // we should have 3 ovs in each table
         let count: i64 = ownership_voucher::dsl::ownership_voucher
+            .count()
+            .get_result(conn)
+            .unwrap();
+        assert_eq!(count, 3);
+
+        let count: i64 = owner_vouchers::dsl::owner_vouchers
+            .count()
+            .get_result(conn)
+            .unwrap();
+        assert_eq!(count, 3);
+
+        let count: i64 = rendezvous_vouchers::dsl::rendezvous_vouchers
             .count()
             .get_result(conn)
             .unwrap();
@@ -158,27 +216,33 @@ mod tests {
 
         // add some metadata for the ovs
         for (guid, _) in ov_map.clone().into_iter() {
-            SqliteDB::update_ov_metadata_i64(
-                &guid,
-                OVMetadataKey::To0AcceptOwnerWaitSeconds,
-                &(2000 as i64),
-                conn,
-            )?;
-            SqliteDB::update_ov_metadata_bool(&guid, OVMetadataKey::To2Performed, &true, conn)?;
+            SqliteDB::update_ov_ttl_metadata_rv(&guid, &(2000 as i64), conn)?;
+            SqliteDB::update_ov_tO0_metadata_owner(&guid, &(2500 as i64), conn)?;
+            SqliteDB::update_ov_tO2_metadata_owner(&guid, &true, conn)?;
         }
 
-        // this should error since the key needs a bool value
-        assert!(SqliteDB::update_ov_metadata_i64(
-            &last_guid,
-            OVMetadataKey::To2Performed,
-            &(2000 as i64),
-            conn,
-        )
-        .is_err());
+        // this should error since there is no OV with that guid created
+        assert!(
+            SqliteDB::insert_ov_ref_owner(&"non-existing-GUID".to_string(), None, None, conn)
+                .is_err()
+        );
 
         // delete an ov, we should have 2
-        SqliteDB::delete_ov(&last_guid, conn)?;
+        SqliteDB::delete_ov(&last_guid.to_string(), conn)?;
         let count: i64 = ownership_voucher::dsl::ownership_voucher
+            .count()
+            .get_result(conn)
+            .unwrap();
+        assert_eq!(count, 2);
+
+        // ...and the on cascade should work for the other tables
+        let count: i64 = owner_vouchers::dsl::owner_vouchers
+            .count()
+            .get_result(conn)
+            .unwrap();
+        assert_eq!(count, 2);
+
+        let count: i64 = rendezvous_vouchers::dsl::rendezvous_vouchers
             .count()
             .get_result(conn)
             .unwrap();

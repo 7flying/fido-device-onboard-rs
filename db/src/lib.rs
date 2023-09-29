@@ -13,13 +13,6 @@ use self::models::OwnershipVoucherModel;
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 
-#[derive(PartialEq, Debug)]
-pub enum OVMetadataKey {
-    To2Performed,
-    To0AcceptOwnerWaitSeconds,
-    Ttl,
-}
-
 pub trait DBStore<T>
 where
     T: diesel::r2d2::R2D2Connection + 'static,
@@ -36,25 +29,34 @@ where
     /// Gets an OwnershipVoucherModel from the DB given its Guid
     fn get_ov_model(guid: &String, conn: &mut T) -> Result<OwnershipVoucherModel>;
 
-    /// Gets an OwnshipVoucher from the DB given its Guid
+    /// Gets an OwnershipVoucher from the DB given its Guid
     fn get_ov(guid: &String, conn: &mut T) -> Result<OV>;
 
     /// Deletes an ownership voucher from the DB given its Guid
     fn delete_ov(guid: &String, conn: &mut T) -> Result<()>;
 
-    /// Updates the value of the given metadata key, value must be i64
-    fn update_ov_metadata_i64(
+    /// Inserts an OV reference in the rendezvous server
+    fn insert_ov_ref_rv(guid: &String, ttl: Option<i64>, conn: &mut T) -> Result<()>;
+
+    /// Updates the ttl of an OV in the rendezvous server
+    fn update_ov_ttl_metadata_rv(guid: &String, ttl: &i64, conn: &mut T) -> Result<()>;
+
+    /// Deletes an OV from the rendezvous server
+    fn delete_ov_rv(guid: &String, conn: &mut T) -> Result<()>;
+
+    /// Insert an OV reference in the owner onboarding server
+    fn insert_ov_ref_owner(
         guid: &String,
-        key: OVMetadataKey,
-        value: &i64,
+        to2: Option<bool>,
+        to0: Option<i64>,
         conn: &mut T,
     ) -> Result<()>;
 
-    /// Updates the value of the given metadata key, value must be bool
-    fn update_ov_metadata_bool(
-        guid: &String,
-        key: OVMetadataKey,
-        value: &bool,
-        conn: &mut T,
-    ) -> Result<()>;
+    #[allow(non_snake_case)]
+    /// Updates the to0 metadata of an OV in the owner onboarding server
+    fn update_ov_tO0_metadata_owner(guid: &String, value: &i64, conn: &mut T) -> Result<()>;
+
+    #[allow(non_snake_case)]
+    /// Updates the to2 metadata of an OV in the owner onboarding server
+    fn update_ov_tO2_metadata_owner(guid: &String, value: &bool, conn: &mut T) -> Result<()>;
 }
