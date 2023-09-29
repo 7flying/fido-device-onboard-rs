@@ -35,16 +35,16 @@ where
     /// Deletes an ownership voucher from the DB given its Guid
     fn delete_ov(guid: &String, conn: &mut T) -> Result<()>;
 
-    /// Inserts an OV reference in the rendezvous server
+    /// Inserts an OV reference in the rendezvous server table
     fn insert_ov_ref_rv(guid: &String, ttl: Option<i64>, conn: &mut T) -> Result<()>;
 
-    /// Updates the ttl of an OV in the rendezvous server
+    /// Updates the ttl of an OV in the rendezvous server table
     fn update_ov_ttl_metadata_rv(guid: &String, ttl: &i64, conn: &mut T) -> Result<()>;
 
     /// Deletes an OV from the rendezvous server
     fn delete_ov_rv(guid: &String, conn: &mut T) -> Result<()>;
 
-    /// Insert an OV reference in the owner onboarding server
+    /// Inserts an OV reference in the owner onboarding server table
     fn insert_ov_ref_owner(
         guid: &String,
         to2: Option<bool>,
@@ -53,10 +53,10 @@ where
     ) -> Result<()>;
 
     #[allow(non_snake_case)]
-    /// Updates the to0 metadata of an OV in the owner onboarding server
+    /// Updates the to0 metadata of an OV in the owner onboarding server table
     fn update_ov_tO0_metadata_owner(guid: &String, value: &i64, conn: &mut T) -> Result<()>;
 
     #[allow(non_snake_case)]
-    /// Updates the to2 metadata of an OV in the owner onboarding server
+    /// Updates the to2 metadata of an OV in the owner onboarding server table
     fn update_ov_tO2_metadata_owner(guid: &String, value: &bool, conn: &mut T) -> Result<()>;
 }
