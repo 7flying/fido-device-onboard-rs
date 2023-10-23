@@ -608,16 +608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "db"
-version = "0.4.12"
-dependencies = [
- "anyhow",
- "diesel",
- "dotenvy",
- "fdo-data-formats",
-]
-
-[[package]]
 name = "deunicode"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -908,6 +898,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fdo-db"
+version = "0.4.12"
+dependencies = [
+ "anyhow",
+ "diesel",
+ "dotenvy",
+ "fdo-data-formats",
+]
+
+[[package]]
 name = "fdo-http-wrapper"
 version = "0.4.12"
 dependencies = [
@@ -1052,7 +1052,9 @@ name = "fdo-store"
 version = "0.4.12"
 dependencies = [
  "async-trait",
+ "diesel",
  "fdo-data-formats",
+ "fdo-db",
  "log",
  "serde",
  "serde_cbor",
