@@ -15,7 +15,7 @@ use std::env;
 use anyhow::Result;
 use dotenvy::dotenv;
 
-use super::models::{NewOwnerOV, NewRendezvousOV, OwnerOV};
+use super::models::{ManufacturerOV, NewOwnerOV, NewRendezvousOV, OwnerOV};
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 use fdo_data_formats::Serializable;
@@ -54,6 +54,14 @@ impl DBStoreManufacturer<PgConnection> for PostgresManufacturerDB {
         Ok(())
     }
 
+    fn get_ov(guid: &str, conn: &mut PgConnection) -> Result<ManufacturerOV> {
+        let result = super::schema::manufacturer_vouchers::dsl::manufacturer_vouchers
+            .filter(super::schema::manufacturer_vouchers::guid.eq(guid))
+            .first(conn)
+            .expect("Error geting manufacturer OVs");
+        Ok(result)
+    }
+
     fn delete_ov(guid: &str, conn: &mut PgConnection) -> Result<()> {
         diesel::delete(manufacturer_vouchers::dsl::manufacturer_vouchers)
             .filter(super::schema::manufacturer_vouchers::guid.eq(guid))
@@ -64,6 +72,14 @@ impl DBStoreManufacturer<PgConnection> for PostgresManufacturerDB {
     fn delete_ov_ttl_le(ttl: i64, conn: &mut PgConnection) -> Result<()> {
         diesel::delete(manufacturer_vouchers::dsl::manufacturer_vouchers)
             .filter(super::schema::manufacturer_vouchers::ttl.le(ttl))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn update_ov_ttl(guid: &str, ttl: Option<i64>, conn: &mut PgConnection) -> Result<()> {
+        diesel::update(manufacturer_vouchers::dsl::manufacturer_vouchers)
+            .filter(super::schema::manufacturer_vouchers::guid.eq(guid))
+            .set(super::schema::manufacturer_vouchers::ttl.eq(ttl))
             .execute(conn)?;
         Ok(())
     }

@@ -5,6 +5,7 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use diesel::SqliteConnection;
 
+use crate::models::ManufacturerOV;
 use crate::models::NewManufacturerOV;
 use crate::schema::manufacturer_vouchers;
 use crate::schema::owner_vouchers;
@@ -54,6 +55,14 @@ impl DBStoreManufacturer<SqliteConnection> for SqliteManufacturerDB {
         Ok(())
     }
 
+    fn get_ov(guid: &str, conn: &mut SqliteConnection) -> Result<ManufacturerOV> {
+        let result = super::schema::manufacturer_vouchers::dsl::manufacturer_vouchers
+            .filter(super::schema::manufacturer_vouchers::guid.eq(guid))
+            .first(conn)
+            .expect("Error geting manufacturer OVs");
+        Ok(result)
+    }
+
     fn delete_ov(guid: &str, conn: &mut SqliteConnection) -> Result<()> {
         diesel::delete(manufacturer_vouchers::dsl::manufacturer_vouchers)
             .filter(super::schema::manufacturer_vouchers::guid.eq(guid))
@@ -64,6 +73,14 @@ impl DBStoreManufacturer<SqliteConnection> for SqliteManufacturerDB {
     fn delete_ov_ttl_le(ttl: i64, conn: &mut SqliteConnection) -> Result<()> {
         diesel::delete(manufacturer_vouchers::dsl::manufacturer_vouchers)
             .filter(super::schema::manufacturer_vouchers::ttl.le(ttl))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn update_ov_ttl(guid: &str, ttl: Option<i64>, conn: &mut SqliteConnection) -> Result<()> {
+        diesel::update(manufacturer_vouchers::dsl::manufacturer_vouchers)
+            .filter(super::schema::manufacturer_vouchers::guid.eq(guid))
+            .set(super::schema::manufacturer_vouchers::ttl.eq(ttl))
             .execute(conn)?;
         Ok(())
     }
@@ -235,6 +252,15 @@ mod tests {
             .get_result(conn)
             .unwrap();
         assert_eq!(count, 3);
+
+        // select ov by guid
+        let ov_db = SqliteManufacturerDB::get_ov(&last_guid, conn)?;
+        assert_eq!(ov_db.guid, last_guid);
+
+        // update ttl of an OV
+        SqliteManufacturerDB::update_ov_ttl(&last_guid, Some(12345), conn)?;
+        let ov_db = SqliteManufacturerDB::get_ov(&last_guid, conn)?;
+        assert_eq!(ov_db.ttl, Some(12345));
 
         // delete an ov by guid, we should have 2 at the end
         SqliteManufacturerDB::delete_ov(&last_guid, conn)?;

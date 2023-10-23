@@ -11,6 +11,7 @@ use diesel::r2d2::Pool;
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 use models::OwnerOV;
+use models::ManufacturerOV;
 
 pub trait DBStoreManufacturer<T>
 where
@@ -25,11 +26,19 @@ where
     /// Inserts an OV
     fn insert_ov(ov: &OV, ttl: Option<i64>, conn: &mut T) -> Result<()>;
 
+    /// Gets an OV
+    fn get_ov(guid: &str, conn: &mut T) -> Result<ManufacturerOV>;
+
     /// Deletes an OV
     fn delete_ov(guid: &str, conn: &mut T) -> Result<()>;
 
     /// Deletes all OVs whose ttl is less or equal to the given ttl
     fn delete_ov_ttl_le(ttl: i64, conn: &mut T) -> Result<()>;
+
+    /// Updates the ttl of an existing OV.
+    /// Option<i64> is set as the ttl type so that we can set NULL in the
+    /// database if 'None' is passed as the ttl.
+    fn update_ov_ttl(guid: &str, ttl: Option<i64>, conn: &mut T) -> Result<()>;
 }
 
 pub trait DBStoreOwner<T>

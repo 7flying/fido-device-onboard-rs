@@ -37,8 +37,9 @@ pub struct NewOwnerOV {
     pub to0_accept_owner_wait_seconds: Option<i64>,
 }
 
-#[derive(Queryable, Selectable, Identifiable)]
+#[derive(Queryable, Selectable, Identifiable, AsChangeset)]
 #[diesel(table_name = crate::schema::manufacturer_vouchers)]
+#[diesel(treat_none_as_null = true)]
 #[diesel(primary_key(guid))]
 pub struct ManufacturerOV {
     pub guid: String,
