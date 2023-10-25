@@ -10,8 +10,9 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
-use models::OwnerOV;
 use models::ManufacturerOV;
+use models::OwnerOV;
+use models::RendezvousOV;
 
 pub trait DBStoreManufacturer<T>
 where
@@ -54,6 +55,9 @@ where
     /// Inserts an OV
     fn insert_ov(ov: &OV, to2: Option<bool>, to0: Option<i64>, conn: &mut T) -> Result<()>;
 
+    /// Gets an OV
+    fn get_ov(guid: &str, conn: &mut T) -> Result<OwnerOV>;
+
     /// Deletes an OV
     fn delete_ov(guid: &str, conn: &mut T) -> Result<()>;
 
@@ -62,6 +66,20 @@ where
 
     /// Selects all the OVs whose to0 is less than the given maximum
     fn select_ov_to0_less_than(to0_max: i64, conn: &mut T) -> Result<Vec<OwnerOV>>;
+
+    /// Updates the to0_accept_owner_wait_seconds field of an existing OV.
+    /// Option<i64> is set as the ttl type so that we can set NULL in the
+    /// database if 'None' is passed as the value.
+    fn update_ov_to0_wait_seconds(
+        guid: &str,
+        wait_seconds: Option<i64>,
+        conn: &mut T,
+    ) -> Result<()>;
+
+    /// Updates the to0 performed status of an existing OV.
+    /// Option<bool> is set as the ttl type so that we can set NULL in the
+    /// database if 'None' is passed as the to0_performed
+    fn update_ov_to2(guid: &str, to0_performed: Option<bool>, conn: &mut T) -> Result<()>;
 }
 
 pub trait DBStoreRendezvous<T>

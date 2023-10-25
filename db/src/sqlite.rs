@@ -126,6 +126,14 @@ impl DBStoreOwner<SqliteConnection> for SqliteOwnerDB {
         Ok(())
     }
 
+    fn get_ov(guid: &str, conn: &mut SqliteConnection) -> Result<OwnerOV> {
+        let result = super::schema::owner_vouchers::dsl::owner_vouchers
+            .filter(super::schema::owner_vouchers::guid.eq(guid))
+            .first(conn)
+            .expect("Error getting owner OV");
+        Ok(result)
+    }
+
     fn delete_ov(guid: &str, conn: &mut SqliteConnection) -> Result<()> {
         diesel::delete(owner_vouchers::dsl::owner_vouchers)
             .filter(super::schema::owner_vouchers::guid.eq(guid))
@@ -154,6 +162,30 @@ impl DBStoreOwner<SqliteConnection> for SqliteOwnerDB {
             .load(conn)
             .expect("Error getting owner OVs");
         Ok(result)
+    }
+
+    fn update_ov_to0_wait_seconds(
+        guid: &str,
+        wait_seconds: Option<i64>,
+        conn: &mut SqliteConnection,
+    ) -> Result<()> {
+        diesel::update(owner_vouchers::dsl::owner_vouchers)
+            .filter(super::schema::owner_vouchers::guid.eq(guid))
+            .set(super::schema::owner_vouchers::to0_accept_owner_wait_seconds.eq(wait_seconds))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn update_ov_to2(
+        guid: &str,
+        to2_performed: Option<bool>,
+        conn: &mut SqliteConnection,
+    ) -> Result<()> {
+        diesel::update(owner_vouchers::dsl::owner_vouchers)
+            .filter(super::schema::owner_vouchers::guid.eq(guid))
+            .set(super::schema::owner_vouchers::to2_performed.eq(to2_performed))
+            .execute(conn)?;
+        Ok(())
     }
 }
 
@@ -330,6 +362,10 @@ mod tests {
             .unwrap();
         assert_eq!(count, 3);
 
+        // select ov by guid
+        let ov_db = SqliteOwnerDB::get_ov(&last_guid, conn)?;
+        assert_eq!(ov_db.guid, last_guid);
+
         // select the owner ovs with to2 performed = true, we should have 2
         let result = SqliteOwnerDB::select_ov_to2_performed(true, conn)?;
         assert_eq!(result.len(), 2);
@@ -337,6 +373,14 @@ mod tests {
         // select the owner ovs with to0 less than 2500, we should have 2
         let result = SqliteOwnerDB::select_ov_to0_less_than(2500_i64, conn)?;
         assert_eq!(result.len(), 2);
+
+        // update the wait_seconds field and to2
+        SqliteOwnerDB::update_ov_to0_wait_seconds(&last_guid.to_string(), Some(1234), conn)?;
+        SqliteOwnerDB::update_ov_to2(&last_guid.to_string(), None, conn)?;
+
+        let ov_db = SqliteOwnerDB::get_ov(&last_guid, conn)?;
+        assert_eq!(ov_db.to0_accept_owner_wait_seconds, Some(1234));
+        assert_eq!(ov_db.to2_performed, None);
 
         // delete an ov from the owner, we should have 2 left
         SqliteOwnerDB::delete_ov(&last_guid.to_string(), conn)?;

@@ -18,8 +18,9 @@ pub struct NewRendezvousOV {
     pub ttl: Option<i64>,
 }
 
-#[derive(Queryable, Selectable, Identifiable)]
+#[derive(Queryable, Selectable, Identifiable, AsChangeset)]
 #[diesel(table_name = crate::schema::owner_vouchers)]
+#[diesel(treat_none_as_null = true)]
 #[diesel(primary_key(guid))]
 pub struct OwnerOV {
     pub guid: String,

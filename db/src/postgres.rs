@@ -125,6 +125,14 @@ impl DBStoreOwner<PgConnection> for PostgresOwnerDB {
         Ok(())
     }
 
+    fn get_ov(guid: &str, conn: &mut PgConnection) -> Result<OwnerOV> {
+        let result = super::schema::owner_vouchers::dsl::owner_vouchers
+            .filter(super::schema::owner_vouchers::guid.eq(guid))
+            .first(conn)
+            .expect("Error getting owner OV");
+        Ok(result)
+    }
+
     fn delete_ov(guid: &str, conn: &mut PgConnection) -> Result<()> {
         diesel::delete(owner_vouchers::dsl::owner_vouchers)
             .filter(super::schema::owner_vouchers::guid.eq(guid))
@@ -153,6 +161,30 @@ impl DBStoreOwner<PgConnection> for PostgresOwnerDB {
             .load(conn)
             .expect("Error getting owner OVs");
         Ok(result)
+    }
+
+    fn update_ov_to0_wait_seconds(
+        guid: &str,
+        wait_seconds: Option<i64>,
+        conn: &mut PgConnection,
+    ) -> Result<()> {
+        diesel::update(owner_vouchers::dsl::owner_vouchers)
+            .filter(super::schema::owner_vouchers::guid.eq(guid))
+            .set(super::schema::owner_vouchers::to0_accept_owner_wait_seconds.eq(wait_seconds))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn update_ov_to2(
+        guid: &str,
+        to2_performed: Option<bool>,
+        conn: &mut PgConnection,
+    ) -> Result<()> {
+        diesel::update(owner_vouchers::dsl::owner_vouchers)
+            .filter(super::schema::owner_vouchers::guid.eq(guid))
+            .set(super::schema::owner_vouchers::to2_performed.eq(to2_performed))
+            .execute(conn)?;
+        Ok(())
     }
 }
 
