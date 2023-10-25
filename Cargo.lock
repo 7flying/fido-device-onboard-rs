@@ -1051,6 +1051,7 @@ dependencies = [
 name = "fdo-store"
 version = "0.4.12"
 dependencies = [
+ "anyhow",
  "async-trait",
  "diesel",
  "fdo-data-formats",
