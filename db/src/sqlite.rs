@@ -16,7 +16,7 @@ use std::env;
 use anyhow::Result;
 use dotenvy::dotenv;
 
-use super::models::{NewOwnerOV, NewRendezvousOV, OwnerOV};
+use super::models::{NewOwnerOV, NewRendezvousOV, OwnerOV, RendezvousOV};
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 use fdo_data_formats::Serializable;
@@ -223,6 +223,14 @@ impl DBStoreRendezvous<SqliteConnection> for SqliteRendezvousDB {
         Ok(())
     }
 
+    fn get_ov(guid: &str, conn: &mut SqliteConnection) -> Result<RendezvousOV> {
+        let result = super::schema::rendezvous_vouchers::dsl::rendezvous_vouchers
+            .filter(super::schema::rendezvous_vouchers::guid.eq(guid))
+            .first(conn)
+            .expect("Error getting rendezvous OV");
+        Ok(result)
+    }
+
     fn delete_ov(guid: &str, conn: &mut SqliteConnection) -> Result<()> {
         diesel::delete(rendezvous_vouchers::dsl::rendezvous_vouchers)
             .filter(super::schema::rendezvous_vouchers::guid.eq(guid))
@@ -233,6 +241,14 @@ impl DBStoreRendezvous<SqliteConnection> for SqliteRendezvousDB {
     fn delete_ov_ttl_le(ttl: i64, conn: &mut SqliteConnection) -> Result<()> {
         diesel::delete(rendezvous_vouchers::dsl::rendezvous_vouchers)
             .filter(super::schema::rendezvous_vouchers::ttl.le(ttl))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn update_ov_ttl(guid: &str, ttl: Option<i64>, conn: &mut SqliteConnection) -> Result<()> {
+        diesel::update(rendezvous_vouchers::dsl::rendezvous_vouchers)
+            .filter(super::schema::rendezvous_vouchers::guid.eq(guid))
+            .set(super::schema::rendezvous_vouchers::ttl.eq(ttl))
             .execute(conn)?;
         Ok(())
     }
@@ -428,6 +444,15 @@ mod tests {
             .get_result(conn)
             .unwrap();
         assert_eq!(count, 3);
+
+        // get an ov by guid
+        let ov_db = SqliteRendezvousDB::get_ov(&last_guid, conn)?;
+        assert_eq!(ov_db.guid, last_guid);
+
+        // update ttl of an ov
+        SqliteRendezvousDB::update_ov_ttl(&last_guid, None, conn)?;
+        let ov_db = SqliteRendezvousDB::get_ov(&last_guid, conn)?;
+        assert_eq!(ov_db.ttl, None);
 
         // delete an ov by guid, we should have 2 at the end
         SqliteRendezvousDB::delete_ov(&last_guid, conn)?;

@@ -15,7 +15,7 @@ use std::env;
 use anyhow::Result;
 use dotenvy::dotenv;
 
-use super::models::{ManufacturerOV, NewOwnerOV, NewRendezvousOV, OwnerOV};
+use super::models::{ManufacturerOV, NewOwnerOV, NewRendezvousOV, OwnerOV, RendezvousOV};
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
 use fdo_data_formats::Serializable;
@@ -222,6 +222,14 @@ impl DBStoreRendezvous<PgConnection> for PostgresRendezvousDB {
         Ok(())
     }
 
+    fn get_ov(guid: &str, conn: &mut PgConnection) -> Result<RendezvousOV> {
+        let result = super::schema::rendezvous_vouchers::dsl::rendezvous_vouchers
+            .filter(super::schema::rendezvous_vouchers::guid.eq(guid))
+            .first(conn)
+            .expect("Error getting rendezvous OV");
+        Ok(result)
+    }
+
     fn delete_ov(guid: &str, conn: &mut PgConnection) -> Result<()> {
         diesel::delete(rendezvous_vouchers::dsl::rendezvous_vouchers)
             .filter(super::schema::rendezvous_vouchers::guid.eq(guid))
@@ -232,6 +240,14 @@ impl DBStoreRendezvous<PgConnection> for PostgresRendezvousDB {
     fn delete_ov_ttl_le(ttl: i64, conn: &mut PgConnection) -> Result<()> {
         diesel::delete(rendezvous_vouchers::dsl::rendezvous_vouchers)
             .filter(super::schema::rendezvous_vouchers::ttl.le(ttl))
+            .execute(conn)?;
+        Ok(())
+    }
+
+    fn update_ov_ttl(guid: &str, ttl: Option<i64>, conn: &mut PgConnection) -> Result<()> {
+        diesel::update(rendezvous_vouchers::dsl::rendezvous_vouchers)
+            .filter(super::schema::rendezvous_vouchers::guid.eq(guid))
+            .set(super::schema::rendezvous_vouchers::ttl.eq(ttl))
             .execute(conn)?;
         Ok(())
     }

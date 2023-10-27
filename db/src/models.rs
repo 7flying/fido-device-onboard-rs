@@ -3,6 +3,7 @@ use std::fmt;
 
 #[derive(Queryable, Selectable, Identifiable)]
 #[diesel(table_name = crate::schema::rendezvous_vouchers)]
+#[diesel(treat_none_as_null = true)]
 #[diesel(primary_key(guid))]
 pub struct RendezvousOV {
     pub guid: String,
