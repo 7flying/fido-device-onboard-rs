@@ -221,7 +221,7 @@ pub enum StoreConfig {
     #[cfg(feature = "directory")]
     Directory { path: std::path::PathBuf },
     #[cfg(feature = "db")]
-    DataBase {},
+    DataBase,
 }
 
 mod db;
