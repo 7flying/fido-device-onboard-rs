@@ -998,6 +998,7 @@ dependencies = [
  "anyhow",
  "clap 4.3.0",
  "fdo-data-formats",
+ "fdo-db",
  "fdo-http-wrapper",
  "fdo-util",
  "hex",
