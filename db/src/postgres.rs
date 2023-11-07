@@ -171,6 +171,19 @@ impl DBStoreOwner<PgConnection> for PostgresOwnerDB {
         Ok(result)
     }
 
+    fn select_ov_to2_performed_and_ov_to0_less_than(
+        to2_performed: bool,
+        to0_max: i64,
+        conn: &mut PgConnection,
+    ) -> Result<Vec<OwnerOV>> {
+        let result = super::schema::owner_vouchers::dsl::owner_vouchers
+            .filter(super::schema::owner_vouchers::to0_accept_owner_wait_seconds.lt(to0_max))
+            .filter(super::schema::owner_vouchers::to2_performed.eq(to2_performed))
+            .select(OwnerOV::as_select())
+            .load(conn)?;
+        Ok(result)
+    }
+
     fn update_ov_to0_wait_seconds(
         guid: &str,
         wait_seconds: Option<i64>,

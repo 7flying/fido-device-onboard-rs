@@ -70,6 +70,14 @@ where
     /// Selects all the OVs whose to0 is less than the given maximum
     fn select_ov_to0_less_than(to0_max: i64, conn: &mut T) -> Result<Vec<OwnerOV>>;
 
+    /// Selects all the OVs with the given to2_performed status and those whose
+    /// to0 is less that then given maximum
+    fn select_ov_to2_performed_and_ov_to0_less_than(
+        to2_performed: bool,
+        to0_max: i64,
+        conn: &mut T,
+    ) -> Result<Vec<OwnerOV>>;
+
     /// Updates the to0_accept_owner_wait_seconds field of an existing OV.
     /// Option<i64> is set as the ttl type so that we can set NULL in the
     /// database if 'None' is passed as the value.
