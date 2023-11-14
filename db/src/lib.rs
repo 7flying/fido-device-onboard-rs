@@ -10,6 +10,7 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 
 use fdo_data_formats::ownershipvoucher::OwnershipVoucher as OV;
+use fdo_data_formats::StoredItem;
 use models::ManufacturerOV;
 use models::OwnerOV;
 use models::RendezvousOV;
@@ -104,7 +105,7 @@ where
     fn get_connection() -> T;
 
     /// Inserts an OV
-    fn insert_ov(ov: &OV, ttl: Option<i64>, conn: &mut T) -> Result<()>;
+    fn insert_ov(ov: &StoredItem, guid: &str, ttl: Option<i64>, conn: &mut T) -> Result<()>;
 
     /// Gets an OV
     fn get_ov(guid: &str, conn: &mut T) -> Result<RendezvousOV>;

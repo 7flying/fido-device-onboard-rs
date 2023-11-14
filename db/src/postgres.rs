@@ -1,9 +1,9 @@
 use super::{DBStoreManufacturer, DBStoreOwner, DBStoreRendezvous};
-
 use crate::models::NewManufacturerOV;
 use crate::schema::manufacturer_vouchers;
 use crate::schema::owner_vouchers;
 use crate::schema::rendezvous_vouchers;
+use fdo_data_formats::StoredItem;
 
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
@@ -216,9 +216,14 @@ impl DBStoreRendezvous<PgConnection> for PostgresRendezvousDB {
             .expect("Couldn't build db connection pool")
     }
 
-    fn insert_ov(ov: &OV, ttl: Option<i64>, conn: &mut PgConnection) -> Result<()> {
+    fn insert_ov(
+        ov: &StoredItem,
+        guid: &str,
+        ttl: Option<i64>,
+        conn: &mut PgConnection,
+    ) -> Result<()> {
         let new_ov_rendezvous = NewRendezvousOV {
-            guid: ov.header().guid().to_string(),
+            guid: guid.to_string(),
             contents: ov.serialize_data()?,
             ttl,
         };
