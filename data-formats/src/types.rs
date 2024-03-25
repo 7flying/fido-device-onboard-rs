@@ -7,7 +7,8 @@ use std::{
 };
 
 use aws_nitro_enclaves_cose::crypto::{SigningPrivateKey, SigningPublicKey};
-use aws_nitro_enclaves_cose::CoseSign1 as COSESignInner;
+//use aws_nitro_enclaves_cose::CoseSign1 as COSESignInner;
+use coset::CoseSign1 as COSESignInner;
 use serde_bytes::ByteBuf;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_tuple::Serialize_tuple;
